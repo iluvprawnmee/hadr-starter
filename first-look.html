@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HADR-STARTER — First Look</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,600;9..144,900&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f2ecdf;
+    --paper-deep: #e9e1cf;
+    --ink: #211d16;
+    --ink-soft: #4f483b;
+    --ink-faint: #857b66;
+    --rule: #c9bda2;
+    --green: #2e6b45;
+    --orange: #c46a14;
+    --red: #a83226;
+    --red-deep: #8c2a20;
+    --mono: 'IBM Plex Mono', monospace;
+    --serif: 'Fraunces', serif;
+    --body: 'Newsreader', serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 19px;
+    line-height: 1.6;
+    position: relative;
+  }
+
+  /* paper grain */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3;
+    opacity: .5;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.47 0 0 0 0 0.4 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* faint margin grid, like a plotting chart */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      linear-gradient(var(--rule) 1px, transparent 1px) 0 0 / 100% 160px,
+      linear-gradient(90deg, var(--rule) 1px, transparent 1px) 0 0 / 160px 100%;
+    opacity: .14;
+  }
+
+  .sheet {
+    position: relative;
+    z-index: 1;
+    max-width: 1060px;
+    margin: 0 auto;
+    padding: 0 48px 120px;
+  }
+
+  /* ---------- masthead ---------- */
+
+  header {
+    padding-top: 56px;
+    animation: rise .8s cubic-bezier(.2,.8,.2,1) both;
+  }
+
+  .toprule {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    border-top: 3px solid var(--ink);
+    border-bottom: 1px solid var(--rule);
+    padding: 10px 2px 9px;
+  }
+  .toprule .dot { color: var(--red); }
+
+  .stamp {
+    display: inline-block;
+    margin-top: 40px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--red);
+    border: 1.5px solid var(--red);
+    padding: 6px 14px 5px;
+    transform: rotate(-1.4deg);
+    background: rgba(168,50,38,.04);
+  }
+
+  h1 {
+    font-family: var(--serif);
+    font-weight: 900;
+    font-size: clamp(52px, 9vw, 108px);
+    line-height: .96;
+    letter-spacing: -.02em;
+    margin-top: 22px;
+    font-variation-settings: "opsz" 144;
+  }
+  h1 em {
+    font-style: italic;
+    font-weight: 300;
+    color: var(--red);
+  }
+
+  .deck {
+    max-width: 620px;
+    margin-top: 26px;
+    font-size: 22px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    font-weight: 400;
+  }
+
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    margin-top: 44px;
+    font-family: var(--mono);
+  }
+  .meta-grid > div {
+    background: var(--paper);
+    padding: 12px 14px;
+  }
+  .meta-grid .k {
+    font-size: 10px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .meta-grid .v { font-size: 13px; font-weight: 500; }
+
+  /* ---------- sections ---------- */
+
+  section { margin-top: 110px; }
+
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 12px;
+    margin-bottom: 40px;
+  }
+  .sec-num {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    color: var(--paper);
+    background: var(--ink);
+    padding: 4px 10px;
+  }
+  .sec-head h2 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: clamp(30px, 4.4vw, 46px);
+    letter-spacing: -.015em;
+    line-height: 1.05;
+  }
+  .sec-head .runner {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    white-space: nowrap;
+  }
+
+  .lede {
+    font-size: 22px;
+    line-height: 1.55;
+    max-width: 640px;
+  }
+  .lede strong { font-weight: 500; }
+
+  p + p { margin-top: 1em; }
+
+  .cols {
+    display: grid;
+    grid-template-columns: 1.15fr .85fr;
+    gap: 56px;
+    margin-top: 36px;
+    align-items: start;
+  }
+
+  .prose { max-width: 58ch; color: var(--ink-soft); }
+  .prose b, .prose strong { color: var(--ink); font-weight: 500; }
+  .prose code {
+    font-family: var(--mono);
+    font-size: .82em;
+    background: var(--paper-deep);
+    padding: 1px 6px;
+    border: 1px solid var(--rule);
+  }
+
+  /* inventory table */
+  .inventory {
+    border: 1px solid var(--ink);
+    font-family: var(--mono);
+    font-size: 12.5px;
+  }
+  .inventory .row {
+    display: grid;
+    grid-template-columns: 168px 1fr;
+    border-bottom: 1px solid var(--rule);
+  }
+  .inventory .row:last-child { border-bottom: none; }
+  .inventory .row:hover { background: var(--paper-deep); }
+  .inventory .path {
+    padding: 11px 14px;
+    font-weight: 600;
+    border-right: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  .inventory .desc {
+    padding: 11px 14px;
+    color: var(--ink-soft);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.45;
+  }
+  .inventory .cap {
+    grid-column: 1 / -1;
+    padding: 8px 14px;
+    font-size: 10px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--paper);
+    background: var(--ink);
+  }
+
+  .absence {
+    margin-top: 34px;
+    border-left: 4px solid var(--red);
+    padding: 4px 0 4px 24px;
+    max-width: 620px;
+  }
+  .absence p {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 24px;
+    line-height: 1.4;
+    color: var(--ink);
+  }
+
+  /* feed cards */
+  .feeds {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-top: 48px;
+  }
+  .feed {
+    border: 1px solid var(--ink);
+    padding: 18px 18px 16px;
+    position: relative;
+    background: var(--paper);
+    transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s;
+  }
+  .feed:hover {
+    transform: translateY(-3px);
+    box-shadow: 5px 6px 0 var(--paper-deep), 5px 6px 0 1px var(--rule);
+  }
+  .feed .sig {
+    position: absolute;
+    top: 18px; right: 16px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+  .sig.g { background: var(--green); box-shadow: 0 0 0 3px rgba(46,107,69,.18); }
+  .sig.o { background: var(--orange); box-shadow: 0 0 0 3px rgba(196,106,20,.18); }
+  .sig.r { background: var(--red); box-shadow: 0 0 0 3px rgba(168,50,38,.18); }
+  .feed h3 {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .feed .tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    display: block;
+    margin: 3px 0 10px;
+  }
+  .feed p { font-size: 14.5px; line-height: 1.5; color: var(--ink-soft); }
+  .feed .risk {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--rule);
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--ink);
+  }
+  .feed .risk::before {
+    content: "⚠ ";
+    color: var(--orange);
+  }
+
+  /* ---------- section 02 : pipeline ---------- */
+
+  .slice-name {
+    font-family: var(--serif);
+    font-size: clamp(26px, 3.6vw, 38px);
+    font-weight: 600;
+    font-style: italic;
+    max-width: 700px;
+    line-height: 1.25;
+    margin-bottom: 8px;
+  }
+  .slice-name .u {
+    text-decoration: underline;
+    text-decoration-color: var(--red);
+    text-decoration-thickness: 3px;
+    text-underline-offset: 6px;
+  }
+
+  .pipeline {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    margin: 44px 0 10px;
+    counter-reset: stage;
+  }
+  .stage {
+    border: 1px solid var(--ink);
+    border-right: none;
+    padding: 20px 18px 18px;
+    position: relative;
+    counter-increment: stage;
+    background: var(--paper);
+  }
+  .stage:last-child { border-right: 1px solid var(--ink); }
+  .stage::before {
+    content: "0" counter(stage);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    color: var(--ink-faint);
+  }
+  .stage::after {
+    content: "→";
+    position: absolute;
+    right: -9px; top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    font-family: var(--mono);
+    font-size: 14px;
+    background: var(--paper);
+    color: var(--red);
+    padding: 2px 1px;
+  }
+  .stage:last-child::after { content: none; }
+  .stage h4 {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    margin: 8px 0 8px;
+  }
+  .stage p { font-size: 14px; line-height: 1.5; color: var(--ink-soft); }
+  .stage code {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    background: var(--paper-deep);
+    padding: 1px 5px;
+    border: 1px solid var(--rule);
+  }
+
+  .why-first {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 56px;
+    margin-top: 48px;
+  }
+  .why-first h4, .oos h4 {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .why-first ol {
+    list-style: none;
+    counter-reset: why;
+  }
+  .why-first ol li {
+    counter-increment: why;
+    position: relative;
+    padding-left: 40px;
+    margin-bottom: 16px;
+    font-size: 16.5px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+  .why-first ol li::before {
+    content: counter(why, lower-alpha);
+    position: absolute;
+    left: 0; top: 2px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    width: 24px; height: 24px;
+    border: 1px solid var(--ink);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+  }
+  .why-first ol li b { color: var(--ink); font-weight: 500; }
+
+  .oos ul { list-style: none; }
+  .oos li {
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    padding: 10px 0 10px 28px;
+    border-bottom: 1px dashed var(--rule);
+    position: relative;
+  }
+  .oos li::before {
+    content: "✕";
+    position: absolute;
+    left: 2px; top: 11px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--red);
+  }
+  .oos li b { color: var(--ink); font-weight: 500; }
+
+  .shape-note {
+    margin-top: 48px;
+    border: 1.5px solid var(--ink);
+    background: var(--paper-deep);
+    padding: 26px 30px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  .shape-note .glyph {
+    font-family: var(--serif);
+    font-weight: 900;
+    font-size: 44px;
+    line-height: 1;
+    color: var(--red);
+  }
+  .shape-note p { font-size: 17px; line-height: 1.55; color: var(--ink-soft); max-width: 62ch; }
+  .shape-note b { color: var(--ink); font-weight: 500; }
+  .shape-note code {
+    font-family: var(--mono);
+    font-size: .82em;
+    background: var(--paper);
+    padding: 1px 6px;
+    border: 1px solid var(--rule);
+  }
+
+  /* ---------- section 03 : questions ---------- */
+
+  .questions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border-top: 1px solid var(--ink);
+    border-left: 1px solid var(--ink);
+  }
+  .q {
+    border-right: 1px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+    padding: 26px 28px 24px;
+    position: relative;
+    transition: background .2s;
+  }
+  .q:hover { background: var(--paper-deep); }
+  .q .num {
+    font-family: var(--serif);
+    font-weight: 900;
+    font-size: 48px;
+    line-height: 1;
+    color: transparent;
+    -webkit-text-stroke: 1.2px var(--ink-faint);
+    display: block;
+    margin-bottom: 14px;
+  }
+  .q:hover .num { color: var(--red); -webkit-text-stroke: 0; }
+  .q h3 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 21px;
+    line-height: 1.3;
+    margin-bottom: 10px;
+    letter-spacing: -.01em;
+  }
+  .q p { font-size: 15px; line-height: 1.55; color: var(--ink-soft); }
+  .q p code {
+    font-family: var(--mono);
+    font-size: .82em;
+    background: var(--paper-deep);
+    padding: 0 5px;
+    border: 1px solid var(--rule);
+  }
+  .q:hover p code { background: var(--paper); }
+  .q .domain {
+    position: absolute;
+    top: 28px; right: 26px;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    writing-mode: vertical-rl;
+  }
+
+  /* ---------- footer ---------- */
+
+  footer {
+    margin-top: 120px;
+    border-top: 3px solid var(--ink);
+    padding-top: 14px;
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  footer .sig-off { color: var(--ink); }
+
+  /* ---------- motion ---------- */
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: none; }
+  }
+  section { animation: rise .8s cubic-bezier(.2,.8,.2,1) both; }
+  section:nth-of-type(1) { animation-delay: .15s; }
+  section:nth-of-type(2) { animation-delay: .28s; }
+  section:nth-of-type(3) { animation-delay: .4s; }
+  footer { animation: rise .8s .5s cubic-bezier(.2,.8,.2,1) both; }
+
+  @media (prefers-reduced-motion: reduce) {
+    header, section, footer { animation: none; }
+  }
+
+  /* ---------- responsive ---------- */
+
+  @media (max-width: 900px) {
+    .sheet { padding: 0 24px 80px; }
+    .cols, .why-first { grid-template-columns: 1fr; gap: 40px; }
+    .feeds { grid-template-columns: 1fr; }
+    .pipeline { grid-template-columns: 1fr 1fr; }
+    .stage:nth-child(2)::after { content: none; }
+    .stage { border-right: 1px solid var(--ink); border-bottom: none; }
+    .stage:nth-child(-n+2) { border-bottom: 1px solid var(--ink); margin-bottom: -1px; }
+    .questions { grid-template-columns: 1fr; }
+    .meta-grid { grid-template-columns: 1fr 1fr; }
+    .sec-head .runner { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <header>
+    <div class="toprule">
+      <span>HADR-STARTER <span class="dot">●</span> REPOSITORY ASSESSMENT</span>
+      <span>REF 2026-07-07 / SGT</span>
+    </div>
+    <span class="stamp">For planning purposes only</span>
+    <h1>First<br>Look <em>Report</em></h1>
+    <p class="deck">
+      A read of the <strong>hadr-starter</strong> repository as it stands: what it is,
+      the first thing worth building, and the ten questions we would put to you
+      before writing a line of code.
+    </p>
+    <div class="meta-grid">
+      <div><span class="k">Repository</span><span class="v">iluvprawnmee/hadr-starter</span></div>
+      <div><span class="k">Head</span><span class="v">26f7284 · main</span></div>
+      <div><span class="k">Lines of product code</span><span class="v">0</span></div>
+      <div><span class="k">Deadline</span><span class="v">Wed 08:30 SGT</span></div>
+    </div>
+  </header>
+
+  <!-- ================= 01 ================= -->
+  <section id="what">
+    <div class="sec-head">
+      <span class="sec-num">§ 01</span>
+      <h2>What this codebase is</h2>
+      <span class="runner">Inventory · 14 tracked files</span>
+    </div>
+
+    <p class="lede">
+      This is not an application. It is a <strong>brief</strong> — a three-day course
+      template for building an autonomous monitoring agent for humanitarian
+      assistance and disaster response, shipped deliberately empty of code.
+    </p>
+
+    <div class="cols">
+      <div class="prose">
+        <p>
+          The end state is specified precisely: an agent that watches three live
+          disaster feeds, filters noise, assesses what remains, and publishes a
+          morning situation report to <code>dashboard.html</code> at
+          <b>08:30 Singapore time</b> — unattended, and silent when nothing has
+          changed. The README is explicit that <em>how</em> is specified nowhere.
+        </p>
+        <p>
+          What the repository does contain is scaffolding for the way of working:
+          a conventions file the agent must obey (<code>CLAUDE.md</code> — currently
+          blank), an agent-kept decision log, a solutions directory so no debugging
+          lesson is paid for twice, and a disabled GitHub Actions workflow whose
+          comments encode the intended architecture before any code exists.
+        </p>
+        <p>
+          The three feed notes are the real payload. Each carries a verified
+          endpoint, a truncated live response, and three open questions that are,
+          in effect, the hard problems of the system: event identity, upstream
+          revision, and failure behaviour.
+        </p>
+      </div>
+
+      <div class="inventory">
+        <div class="row"><div class="cap">Tracked contents</div></div>
+        <div class="row"><div class="path">feeds/</div><div class="desc">Field notes on GDACS, USGS, ReliefWeb — endpoints, sample payloads, open questions</div></div>
+        <div class="row"><div class="path">CLAUDE.md</div><div class="desc">Agent conventions — language, test command, deviations policy. All four sections empty</div></div>
+        <div class="row"><div class="path">implementation-notes.md</div><div class="desc">Agent's working log: decisions, open questions, deviations. Empty template</div></div>
+        <div class="row"><div class="path">scripts/</div><div class="desc">Reserved for deterministic checks — "anything that must give the same answer twice"</div></div>
+        <div class="row"><div class="path">skills/</div><div class="desc">Reserved for Day 2 skills, one folder per skill with a SKILL.md</div></div>
+        <div class="row"><div class="path">docs/solutions/</div><div class="desc">One learning per file; contains one example entry marked for deletion</div></div>
+        <div class="row"><div class="path">.github/</div><div class="desc">Slice + skill issue templates, @claude review workflows, and sitrep.yml.disabled</div></div>
+        <div class="row"><div class="path">.gitignore</div><div class="desc">Reports and secrets stay out; dashboard.html is the committed exception — it is the product</div></div>
+      </div>
+    </div>
+
+    <div class="absence">
+      <p>The absence is the point: every empty directory is a decision the
+      course expects you to make, not a gap in the template.</p>
+    </div>
+
+    <div class="feeds">
+      <div class="feed">
+        <span class="sig g"></span>
+        <h3>USGS</h3>
+        <span class="tag">GeoJSON · rolling windows · no auth</span>
+        <p>Real-time earthquakes, regenerated every minute. The cleanest feed: stable schema, machine timestamps, significance scores.</p>
+        <p class="risk">Events get revised — magnitude, location, occasionally deleted outright — after publication.</p>
+      </div>
+      <div class="feed">
+        <span class="sig o"></span>
+        <h3>GDACS</h3>
+        <span class="tag">GeoJSON + RSS · multi-hazard · no auth</span>
+        <p>EU/UN multi-hazard alerts with colour-coded severity. Broadest coverage: quakes, cyclones, floods, volcanoes, drought, fire.</p>
+        <p class="risk">Four different alert fields per event; no published rate limits or uptime guarantees.</p>
+      </div>
+      <div class="feed">
+        <span class="sig r"></span>
+        <h3>ReliefWeb</h3>
+        <span class="tag">API (gated) · RSS (open) · curated</span>
+        <p>UN OCHA's human-curated disaster registry. Slow-moving and authoritative — an event appears once humans decide it matters.</p>
+        <p class="risk">API requires a pre-approved appname (403 without); approval may not arrive this week.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 02 ================= -->
+  <section id="first">
+    <div class="sec-head">
+      <span class="sec-num">§ 02</span>
+      <h2>What we would build first</h2>
+      <span class="runner">One slice · end to end · runnable today</span>
+    </div>
+
+    <p class="slice-name">
+      The thinnest path from <span class="u">a live feed</span> to
+      <span class="u">a committed dashboard.html</span> — run by hand, once.
+    </p>
+
+    <div class="pipeline">
+      <div class="stage">
+        <h4>Fetch</h4>
+        <p>Pull USGS <code>all_day.geojson</code>. One feed only. Follow redirects, log the final URL, save the raw payload.</p>
+      </div>
+      <div class="stage">
+        <h4>Filter</h4>
+        <p>A deterministic script in <code>scripts/</code> keeps events above a significance threshold. No model call. Same input, same answer, twice.</p>
+      </div>
+      <div class="stage">
+        <h4>Assess</h4>
+        <p>One headless model pass over the survivors: what happened, where, how bad, who is affected. Structured output, not prose soup.</p>
+      </div>
+      <div class="stage">
+        <h4>Publish</h4>
+        <p>Render <code>dashboard.html</code> and commit it. Ugly is fine. Committed and reachable is the definition of done.</p>
+      </div>
+    </div>
+
+    <div class="why-first">
+      <div>
+        <h4>Why this slice, why USGS</h4>
+        <ol>
+          <li><b>It proves the whole pipeline shape</b> — fetch, deterministic gate, model assessment, publish — which is exactly the architecture <code>sitrep.yml.disabled</code> already prescribes: the script decides whether anything changed; the model never decides whether to wake up.</li>
+          <li><b>USGS is the lowest-risk feed</b>: no auth, no approval queue, refreshed every minute, and honest about its own revisions. GDACS adds hazard breadth later; ReliefWeb waits on an appname.</li>
+          <li><b>It produces the product on day one.</b> A dashboard that exists and is wrong is reviewable; a pipeline that is elegant and unpublished is not.</li>
+          <li><b>Every hard problem gets a seam</b> — dedup, change detection, and scheduling each slot into an existing stage instead of forcing a rewrite.</li>
+        </ol>
+      </div>
+      <div class="oos">
+        <h4>Deliberately out of scope</h4>
+        <ul>
+          <li><b>Cross-feed deduplication</b> — one feed means the same-event problem cannot exist yet</li>
+          <li><b>Scheduling & the 08:30 cron</b> — the workflow stays disabled until both TODO steps exist</li>
+          <li><b>Change detection / staying quiet</b> — meaningless until there are two consecutive runs to compare</li>
+          <li><b>ReliefWeb appname request</b> — submit the form on day one, build against RSS meanwhile</li>
+          <li><b>Dashboard design</b> — layout is a Day 3 trust problem, not a Day 2 autonomy problem</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="shape-note">
+      <span class="glyph">¶</span>
+      <p>
+        <b>First commit before the slice:</b> fill in <code>CLAUDE.md</code>.
+        The template itself warns that an empty conventions file is also a decision
+        — just not one you made. Language, test command, and deviations policy are
+        upstream of every line the agent will write; choosing them after the first
+        slice means rewriting the first slice.
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= 03 ================= -->
+  <section id="questions">
+    <div class="sec-head">
+      <span class="sec-num">§ 03</span>
+      <h2>Ten questions before we start</h2>
+      <span class="runner">Answers wanted in writing · they become goal.md</span>
+    </div>
+
+    <div class="questions">
+      <div class="q">
+        <span class="domain">Purpose</span>
+        <span class="num">01</span>
+        <h3>Who reads the 08:30 report, and what decision does it drive?</h3>
+        <p>A duty officer deciding whether to wake a response team needs different depth, ordering, and tone than an executive skimming over coffee. Everything downstream — length, layout, what counts as "the headline" — hangs on this.</p>
+      </div>
+      <div class="q">
+        <span class="domain">Scope</span>
+        <span class="num">02</span>
+        <h3>What is the geographic and hazard scope?</h3>
+        <p>Global everything, or a region of interest? The 08:30 <em>Singapore</em> anchor hints at Asia-Pacific. And are slow-onset hazards — drought, disease — in scope, or only sudden events?</p>
+      </div>
+      <div class="q">
+        <span class="domain">Threshold</span>
+        <span class="num">03</span>
+        <h3>Where is the line between signal and noise?</h3>
+        <p>GDACS Green events arrive constantly; USGS logs two hundred quakes a day. Is the bar GDACS Orange+? A USGS <code>sig</code> score? Population within range? We need the reportability rule stated, not inferred.</p>
+      </div>
+      <div class="q">
+        <span class="domain">Identity</span>
+        <span class="num">04</span>
+        <h3>When two feeds report the same disaster, which record wins?</h3>
+        <p>The same physical earthquake arrives from USGS and GDACS under different IDs, and from ReliefWeb days later under a GLIDE number. What makes two records the same event, and whose ID do we store as canonical?</p>
+      </div>
+      <div class="q">
+        <span class="domain">Revision</span>
+        <span class="num">05</span>
+        <h3>What happens to a published report when its event changes underneath it?</h3>
+        <p>USGS revises magnitudes and occasionally deletes events; GDACS escalates colours after first report. Silently correct, visibly annotate, or leave the published record as history?</p>
+      </div>
+      <div class="q">
+        <span class="domain">Quiet</span>
+        <span class="num">06</span>
+        <h3>What exactly counts as "nothing has changed"?</h3>
+        <p>New event only? An alert-level escalation on a known event? A casualty figure revised upward? The deterministic gate in <code>scripts/</code> needs this defined precisely — it is the one function that must never guess.</p>
+      </div>
+      <div class="q">
+        <span class="domain">Failure</span>
+        <span class="num">07</span>
+        <h3>On a morning a feed is down, does the report still publish?</h3>
+        <p>A missing report and a report that says "GDACS unreachable since 03:00, coverage degraded" are very different products. Which failure is acceptable — silence, or a report with a stated data gap?</p>
+      </div>
+      <div class="q">
+        <span class="domain">Access</span>
+        <span class="num">08</span>
+        <h3>Has a ReliefWeb appname been requested yet?</h3>
+        <p>Approval takes time we may not have this week. If not — we submit the form today and build against the open RSS feed, accepting that RSS lacks the API's filtering and structured fields. Confirm that trade-off is acceptable.</p>
+      </div>
+      <div class="q">
+        <span class="domain">Runtime</span>
+        <span class="num">09</span>
+        <h3>Does this run on GitHub Actions, and with what budget?</h3>
+        <p><code>sitrep.yml.disabled</code> implies Actions plus headless Claude. Confirm: is that the deployment target, whose API key funds the model calls, and are there minutes or cost ceilings that shape how often we may poll?</p>
+      </div>
+      <div class="q">
+        <span class="domain">Conventions</span>
+        <span class="num">10</span>
+        <h3>What goes in CLAUDE.md — language, test command, deviations policy?</h3>
+        <p>All four sections are blank, and the template warns that an empty conventions file is a decision by default. Python or TypeScript, what a passing test run looks like, and how far the agent may deviate before it must stop and ask.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>HADR-STARTER · FIRST LOOK REPORT · § 01–03</span>
+    <span class="sig-off">Prepared 07 Jul 2026 · Awaiting answers before first commit</span>
+  </footer>
+
+</div>
+</body>
+</html>
