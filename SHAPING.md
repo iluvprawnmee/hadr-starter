@@ -181,9 +181,12 @@ which gives a concrete per-hazard matching mechanism. Only R2.1 changes (🟡).
 ## Spikes
 
 - [`SPIKE-entity-resolution.md`](./SPIKE-entity-resolution.md) — **done.** Resolved
-  R2.1 with per-hazard tolerances (EQ ±30min/150km, TC ±24h/500km, RW GLIDE-or-
-  country/±72h…), a blocking + GLIDE-first + fuzzy-score algorithm, and the
-  one-to-many Situation aggregation. The ⚠️ on the resolver part is cleared.
+  R2.1 with a blocking + GLIDE-first + fuzzy-score algorithm in **two stages**
+  (tight physical-event dedup, then loose crisis aggregation) and the one-to-many
+  Situation aggregation. The ⚠️ on the resolver part is cleared. **Follow-up (V2):**
+  the per-hazard tolerances are provisional starting points — calibrate them against
+  the recorded fixtures (aftershock sequences, the Venezuela M7.1/M7.5 case) before
+  the resolver is locked, tracking false-merge / false-split rates.
 - **Surfaced during detailing, now resolved:** cross-run persistence on ephemeral
   CI → commit the store + rolling archive to a `data` branch (`ADR-0009`). C9 flag
   cleared.
@@ -209,8 +212,8 @@ vertical slice pairing mechanism with the data it owns. One flagged unknown rema
 | **C2** | **Archiver** — write each raw payload to `archive/{feed}/{fetched_at}.{ext}` and insert a `raw_payload` row, before any parsing (`ADR-0003`). | |
 | **C3** | **Normalizer** — per-feed parser → normalized record: `hazard_type`, `occurred_at` UTC (GDACS naive→UTC, USGS epoch-ms, RW RFC-822), `lat/lon/depth/mag`, `feed_alert`, `house_severity` (`ADR-0005`), `country/iso3`, `glide`, `feed_key`. Applies AP bounding box (`ADR-0007`), severity floor + M≥6.5/≤70km fallback (`ADR-0008`). | |
 | **C4** | **Entity tracker store** — SQLite per the PRD data model (`raw_payload · event · episode · situation · situation_member · report · news_item · feed_health`). Upsert each record into its `event` by `feed_key`; bump `last_seen_poll`. | |
-| **C5** | **Entity resolver** — per `SPIKE-entity-resolution.md`: block by `hazard + geo-cell + time-bucket`; GLIDE-first join; per-hazard fuzzy score → attach/create Event; aggregate into Situation; ReliefWeb one-to-many attach; GLIDE upgrade; ReliefWeb dedup (R2.2). | |
-| **C6** | **Transition engine** — per poll, compute per-entity transitions → News: `new` (first seen, above floor), `escalation` (house severity up), `revision` (\|Δmag\|≥0.5 or GDACS colour change), `episode` (TC/FL/VO episode change), `downgrade` + `deleted` (not seen for K polls while in-window). Emit `news_item` candidates. | |
+| **C5** | **Entity resolver** — per `SPIKE-entity-resolution.md`: block by `hazard + geo-cell + time-bucket`; GLIDE-first join; then **two stages** — tight physical-event dedup → attach/create Event, then loose crisis aggregation → Situation; ReliefWeb one-to-many attach; GLIDE upgrade; ReliefWeb dedup (R2.2). Tolerances provisional (calibrate in V2). | |
+| **C6** | **Transition engine** — per poll, compute per-entity transitions → News: `new` (first seen, above floor), `escalation` (house severity up), `revision` (\|Δmag\|≥0.5 or GDACS colour change), `episode` (TC/FL/VO episode change), `downgrade` + `deleted` (omitted by N consecutive *successful* polls while in-window). Emit `news_item` candidates. | |
 | **C7** | **Report builder** — on the 08:30 run: window = since last successful report (first run 24h); gather News; rank Situations by house severity + recency; caps (top 8 / top 5, overflow); assemble Corrections; compute `feed_health` for the banner; quiet-day path when no News. | |
 | **C8** | **Renderer** — deterministic `dashboard.html`: headline Situation → ranked cards → Corrections section → health/heartbeat footer, with stale banner when a feed is old. | |
 | **C9** | **Scheduler + poller** — **two** GitHub Actions crons: a frequent poll-and-archive workflow feeding the store, and the 00:30 UTC report workflow that builds + renders + commits `dashboard.html` (`ADR-0002`); ReliefWeb budget + backoff (`ADR-0004`, `R6.3`). Cross-run persistence: both workflows read/write the SQLite store + rolling raw archive on a dedicated `data` branch (`ADR-0009`), so state survives ephemeral runners. | |

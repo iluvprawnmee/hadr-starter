@@ -91,8 +91,9 @@ _Avoid_: dynamic, active.
 
 **Lifecycle status**:
 The tracked state of an Event as we understand it — `active`, `downgraded`, or
-`deleted`. Deletion is inferred when an Event is not seen for several polls while
-still inside the report window; it drives corrections, not silent removal.
+`deleted`. Deletion is inferred only when an Event is absent from several
+*consecutive successful* feed polls while still inside the report window (missed
+polls do not count); it drives corrections, not silent removal.
 _Avoid_: state, status (unqualified), stage.
 
 ## Domain — the report

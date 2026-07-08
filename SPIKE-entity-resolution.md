@@ -32,6 +32,11 @@ that R2.1 can move from ⚠️ to a concrete mechanism.
 
 ## Per-hazard matching tolerances
 
+**Provisional — starting points from reasoning, to be calibrated against fixtures
+before V2 (see "Calibration" below).** These are the Stage-2 (crisis-aggregation)
+windows; Stage-1 physical-event dedup uses tighter values (see "Two matching
+stages").
+
 | Hazard | Time window | Distance | Extra | Rationale |
 |--------|-------------|----------|-------|-----------|
 | Earthquake (EQ) | ±30 min | ≤ 150 km | \|Δmag\| ≤ 1.0 | Precise origin/time; window absorbs revisions & late PAGER, not distinct quakes. Dedupes GDACS EQ vs USGS. |
@@ -48,18 +53,41 @@ that R2.1 can move from ⚠️ to a concrete mechanism.
    (UTC), lat, lon, [magnitude, depth], country, iso3, glide, feed_keys`.
 2. **Block** by `hazard_type + geo-cell (~1°) + time-bucket` to keep comparisons cheap.
 3. **Deterministic GLIDE join** first: records sharing a GLIDE are the same Situation.
-4. **Fuzzy score** within a block using the per-hazard tolerances above; attach to the
-   best Event above threshold, else create a new Event.
-5. **Situation aggregation**: matched Events group into a Situation; a ReliefWeb
+4. **Two matching stages, not one** (the key correction):
+   - **Stage 1 — physical-event dedup (tight):** is the incoming record the *same
+     physical event* as an existing one — e.g. the same quake from GDACS(NEIC) and
+     USGS? EQ tolerances ~±90 s, ≤50 km, compatible `magType`. A match merges into
+     one Event; it must **not** merge two distinct quakes.
+   - **Stage 2 — crisis aggregation (loose):** group distinct-but-related Events
+     into one Situation using the per-hazard windows in the table above (EQ ±30 min
+     / 150 km, etc.). Deliberately loose — may span an aftershock sequence.
+   Conflating these was the original error: one threshold set cannot be both tight
+   enough to keep separate quakes apart and loose enough to group a crisis.
+5. **Situation aggregation**: Stage-2 groups Events into a Situation; a ReliefWeb
    disaster attaches to all Events sharing hazard + country + window (one-to-many).
 6. **GLIDE upgrade**: when a GLIDE later appears, confirm/merge the fuzzy grouping and
    record it as the firm identity.
 7. **Within-ReliefWeb dedup** (R2.2) runs before step 5: collapse reposts of one
    disaster by GLIDE/link.
 
+## Calibration (before V2)
+
+The tolerances above are reasoned starting points, not measured. Before the V2
+resolver is locked, **calibrate them against the recorded fixtures (`R8.1`)** —
+especially aftershock sequences and the Venezuela M7.1/M7.5 case — and track two
+error rates:
+
+- **false-merge** — two distinct crises collapsed into one Event/Situation (risks
+  corrupting `house_severity(max)` and the ranked headline);
+- **false-split** — one crisis fragmented into several Situations.
+
+Tune Stage-1 (dedup) and Stage-2 (aggregation) independently. This calibration is a
+V2 build task, tracked as `E-Q`-style follow-up, not a blocker on the shape.
+
 ## Acceptance
 
 Complete — we can now describe, per hazard, which fields join records across the
-three feeds, the tolerances that decide identity, how one-to-many crises aggregate
-into a Situation, and how the join runs incrementally in the entity tracker. R2.1's
-mechanism is concrete; the ⚠️ on the resolver part is resolved.
+three feeds, the **two-stage** matching (tight physical-event dedup, then loose
+crisis aggregation), how one-to-many crises aggregate into a Situation, and how the
+join runs incrementally in the entity tracker. R2.1's mechanism is concrete; its
+tolerances are provisional pending fixture calibration in V2.

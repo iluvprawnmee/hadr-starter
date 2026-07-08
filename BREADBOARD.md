@@ -149,7 +149,7 @@ Headless — no UI.
 | N33 | P1 | transitions | `detect_revision()` — \|Δmag\|≥0.5 or GDACS colour change → News(revision) | call | → N40 | — |
 | N34 | P1 | transitions | `detect_episode()` — TC/FL/VO new episode → News(episode) | call | → S3, → N40 | — |
 | N35 | P1 | transitions | `detect_downgrade()` — house severity decreased while headlined → News(correction) | call | → N40 | — |
-| N36 | P3 | transitions | `detect_deletion()` — not seen for K polls while in-window → set `lifecycle_status=deleted`, News(correction) | write | → S2, → N40 | — |
+| N36 | P3 | transitions | `detect_deletion()` — omitted by N consecutive *successful* polls (per `feed_health` `S4`) while in-window → set `lifecycle_status=deleted`, News(correction). Missed/failed polls do not count | write | → S2, → N40 | — |
 | N40 | P3 | transitions | `enqueue_news()` — write a News candidate to the pending queue | write | → S7 | — |
 
 ### Data Stores (added this section)
@@ -165,11 +165,18 @@ Headless — no UI.
 
 - **Resolution reads before it writes:** `N21` fetches candidates from `S2`/`S5`
   (Returns To `N22`); the write happens only at `N25`/`N26`/`N28`.
-- **GLIDE-first, fuzzy-second:** `N22 → N25` on a deterministic GLIDE hit; otherwise
-  `N22 → N23 → N24`, matching the spike's algorithm.
-- **Deletion is a real transition, not absence:** `N36` reads `last_seen_poll` from
-  `S2` and writes `lifecycle_status=deleted` — this is the mechanism that earns
-  Shape C its R3.3 pass. The News it emits is a correction, not a silent drop.
+- **GLIDE-first, fuzzy-second, in two stages:** `N22 → N25` on a deterministic GLIDE
+  hit; otherwise `N22 → N23 → N24`. `N23/N24` do **Stage 1 — tight physical-event
+  dedup** (same quake from GDACS(NEIC)+USGS → one Event); `N25 attach_to_situation`
+  does **Stage 2 — loose crisis aggregation** (related Events → one Situation). The
+  two stages use different tolerances (`SPIKE-entity-resolution.md`), provisional
+  until calibrated against fixtures in V2.
+- **Deletion is a real transition, gated on successful polls:** `N36` reads
+  `last_seen_poll` from `S2` *and* `feed_health` from `S4`, and only fires after N
+  consecutive **successful** polls omitted the event (`ADR-0008`) — a missed/failed
+  poll never counts. This is the mechanism that earns Shape C its R3.3 pass, and it
+  is what keeps corrections trustworthy on a flaky-CI morning. The News it emits is
+  a correction, not a silent drop.
 - **The pending queue decouples polls from reports:** every poll appends to `S7`;
   the Report Run (Section 3) drains it for the window since the last report, so a
   missed report never loses News (`R6.1`).

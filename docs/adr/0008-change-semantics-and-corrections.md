@@ -25,6 +25,19 @@ Until the appname-gated `reports` API is available (ADR-0004), the MVP reads the
 ReliefWeb signal" concretely means **first disaster declaration / new GLIDE**;
 casualty figures and sitrep counts are absent until the API path is live.
 
+## Deletion detection is gated on successful polls, not elapsed time
+
+A feed dropping an event (USGS records vanish; GDACS `istemporary` events
+disappear) has no tombstone, so deletion is inferred from absence. But absence is
+ambiguous when *we* failed to poll — and polling runs on best-effort GitHub Actions
+cron (`ADR-0002`), which delays and skips. So deletion is **not** timed off the
+wall clock. An Event transitions to `deleted` only after **N consecutive
+*successful* polls of its source feed** (per `feed_health`) each returned the feed
+and omitted the event, while it is still inside the report window. Missed or failed
+polls do not count toward N and never trigger a deletion. This keeps a slow-CI
+morning from emitting false retractions — the corrections feature stays trustworthy
+precisely when the infrastructure is flaky.
+
 ## Consequences
 
 - GDACS event-level `alertlevel` drives the severity floor and headline; episode
