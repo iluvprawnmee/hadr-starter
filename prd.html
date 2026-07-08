@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HADR Monitor — PRD</title>
+<style>
+  :root {
+    --bg: #f7f6f3;
+    --panel: #ffffff;
+    --ink: #1b1a17;
+    --muted: #6c6a63;
+    --line: #e4e1d9;
+    --accent: #c2410c;        /* signal amber-red */
+    --accent-soft: #fdece2;
+    --notable: #2563eb;
+    --serious: #d97706;
+    --critical: #dc2626;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14130f;
+      --panel: #1d1c17;
+      --ink: #ececE4;
+      --muted: #9c988c;
+      --line: #322f27;
+      --accent: #fb7a4b;
+      --accent-soft: #33211a;
+      --notable: #60a5fa;
+      --serious: #fbbf24;
+      --critical: #f87171;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.6;
+    font-size: 17px;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 4rem 1.5rem 6rem; }
+
+  /* Header */
+  header { border-bottom: 2px solid var(--ink); padding-bottom: 1.75rem; margin-bottom: 2.5rem; }
+  .kicker {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .18em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 .6rem;
+  }
+  h1 { font-size: clamp(2rem, 6vw, 3rem); line-height: 1.05; margin: 0 0 .4rem; letter-spacing: -.02em; }
+  .sub { color: var(--muted); font-size: 1.05rem; margin: 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.5rem; }
+  .chip {
+    font-family: var(--mono); font-size: .72rem; padding: .3rem .6rem;
+    border: 1px solid var(--line); border-radius: 999px; color: var(--muted);
+    background: var(--panel); white-space: nowrap;
+  }
+
+  /* Sections */
+  section { margin: 3.25rem 0; }
+  .sec-head { display: flex; align-items: baseline; gap: .75rem; margin-bottom: 1.1rem; }
+  .sec-num {
+    font-family: var(--mono); font-size: .8rem; color: var(--accent);
+    border: 1px solid var(--accent); border-radius: 6px; padding: .15rem .45rem; flex: none;
+  }
+  h2 { font-size: 1.5rem; margin: 0; letter-spacing: -.01em; }
+  p { margin: 0 0 1rem; }
+  .lead { font-size: 1.15rem; }
+  a { color: var(--accent); }
+
+  /* Goal callout */
+  .goal {
+    background: var(--accent-soft); border-left: 3px solid var(--accent);
+    padding: 1.4rem 1.6rem; border-radius: 0 10px 10px 0; font-size: 1.15rem;
+  }
+  .goal strong { color: var(--accent); }
+
+  /* Slices */
+  .slice {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 1.4rem 1.5rem; margin-bottom: 1.1rem;
+  }
+  .slice-top { display: flex; align-items: center; gap: .8rem; margin-bottom: .9rem; }
+  .slice-badge {
+    font-family: var(--mono); font-weight: 700; font-size: .8rem; color: #fff;
+    background: var(--accent); border-radius: 7px; padding: .3rem .55rem; flex: none;
+  }
+  .slice h3 { margin: 0; font-size: 1.15rem; }
+  .slice .tag { font-family: var(--mono); font-size: .68rem; color: var(--muted); margin-top: .1rem; }
+  .rows { display: grid; grid-template-columns: 5.5rem 1fr; gap: .35rem .9rem; margin-top: .4rem; }
+  .rows dt {
+    font-family: var(--mono); font-size: .7rem; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--accent); padding-top: .2rem;
+  }
+  .rows dd { margin: 0; }
+  .demo { color: var(--ink); }
+  .proves { font-family: var(--mono); font-size: .72rem; color: var(--muted); }
+
+  /* Table */
+  .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--line); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: .88rem; min-width: 560px; }
+  th, td { text-align: left; padding: .6rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th { background: var(--panel); font-size: .72rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+  tbody tr:last-child td { border-bottom: none; }
+  td code, .fld { font-family: var(--mono); font-size: .82rem; }
+  .fld { color: var(--accent); }
+  .rel { font-family: var(--mono); font-size: .82rem; color: var(--muted); }
+
+  /* Severity legend */
+  .sev { display: inline-block; font-family: var(--mono); font-size: .68rem; font-weight: 700;
+         padding: .1rem .45rem; border-radius: 5px; color: #fff; }
+  .sev.n { background: var(--notable); }
+  .sev.s { background: var(--serious); }
+  .sev.c { background: var(--critical); }
+
+  /* Out of scope */
+  .oos { list-style: none; padding: 0; margin: 0; }
+  .oos li { padding: .55rem 0 .55rem 1.6rem; border-bottom: 1px solid var(--line); position: relative; }
+  .oos li:last-child { border-bottom: none; }
+  .oos li::before { content: "✕"; position: absolute; left: 0; color: var(--accent); font-family: var(--mono); }
+  .oos small { color: var(--muted); }
+
+  footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--line);
+           font-family: var(--mono); font-size: .74rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <p class="kicker">Product Requirements · Humanitarian Assistance &amp; Disaster Response</p>
+    <h1>HADR Monitor</h1>
+    <p class="sub">An unattended agent that turns three noisy disaster feeds into one trustworthy morning situation report.</p>
+    <div class="chips">
+      <span class="chip">Region · Asia-Pacific</span>
+      <span class="chip">Feeds · GDACS · USGS · ReliefWeb</span>
+      <span class="chip">Publishes · 08:30 SGT → dashboard.html</span>
+      <span class="chip">Stack · Python 3.12 · SQLite · GitHub Actions</span>
+    </div>
+  </header>
+
+  <!-- GOAL -->
+  <section>
+    <div class="sec-head"><span class="sec-num">01</span><h2>The goal</h2></div>
+    <p class="goal">
+      Every morning at <strong>08:30 Singapore time</strong>, publish <strong>one ranked situation
+      report</strong> of the Asia-Pacific natural-hazard events that are genuinely
+      <strong>new or changed</strong> since the last report — filtering out the ~95% of feed volume
+      that is noise, reading as <strong>one story per real-world crisis</strong>, staying
+      <strong>quiet but never silent</strong> on a calm morning, flagging itself honestly when a feed
+      is down, issuing <strong>corrections</strong> when a prior headline is downgraded or deleted, and
+      running <strong>unattended</strong>.
+    </p>
+    <p class="lead" style="margin-top:1.4rem">
+      The hard part is not fetching — it is the <em>diff engine</em>: an editorial policy, backed by a
+      persistent store, that decides what counts as news. The feeds are rolling windows with no history
+      and no deletion tombstones, so the agent must keep the memory they do not.
+    </p>
+  </section>
+
+  <!-- SLICES -->
+  <section>
+    <div class="sec-head"><span class="sec-num">02</span><h2>Three vertical slices</h2></div>
+    <p>Each slice is independently demo-able and ends in a real <code>dashboard.html</code>. They build
+      the system outside-in: prove the pipeline, then the diff engine, then trust &amp; autonomy.</p>
+
+    <div class="slice">
+      <div class="slice-top">
+        <span class="slice-badge">V1</span>
+        <div>
+          <h3>Skeleton report, one feed</h3>
+          <div class="tag">ingest → store → render, end to end</div>
+        </div>
+      </div>
+      <dl class="rows">
+        <dt>Build</dt><dd>GDACS adapter → raw-payload archive → normalizer (UTC + house severity) →
+          SQLite store → Asia-Pacific bounding-box &amp; severity-floor filter → ranker → HTML renderer.</dd>
+        <dt>Demo</dt><dd class="demo">This morning's in-region GDACS <span class="sev s">SERIOUS</span>+
+          events rendered as a ranked report. First run = the whole window; no diffing yet.</dd>
+        <dt>Proves</dt><dd class="proves">R0 · R1.1 · R1.2 · R4.1 · R5.1 · R5.2 · R7</dd>
+      </dl>
+    </div>
+
+    <div class="slice">
+      <div class="slice-top">
+        <span class="slice-badge">V2</span>
+        <div>
+          <h3>The diff engine &amp; Situations — all three feeds</h3>
+          <div class="tag">the heart: decide what is news</div>
+        </div>
+      </div>
+      <dl class="rows">
+        <dt>Build</dt><dd>Add USGS + ReliefWeb adapters; entity tracker + fuzzy resolver grouping feed
+          records into <strong>Situations</strong>; transition engine emitting News
+          (new · escalation · material revision · new episode); diff against the last report;
+          quiet-day note + per-feed health footer.</dd>
+        <dt>Demo</dt><dd class="demo">Replay a recorded two-run day from fixtures — the second report
+          shows <em>only</em> what changed; a quiet run shows just the heartbeat.</dd>
+        <dt>Proves</dt><dd class="proves">R1.3 · R2.1 · R2.2 · R2.3 · R3.1 · R4.2 · R6.1 · R8.1 · R8.3</dd>
+      </dl>
+    </div>
+
+    <div class="slice">
+      <div class="slice-top">
+        <span class="slice-badge">V3</span>
+        <div>
+          <h3>Corrections, resilience &amp; the schedule</h3>
+          <div class="tag">trustworthy + unattended</div>
+        </div>
+      </div>
+      <dl class="rows">
+        <dt>Build</dt><dd>Per-entity downgrade / "not-seen-for-K-polls → deleted" transitions feeding a
+          <strong>Corrections</strong> section; stale-data banner + graceful feed-down; ReliefWeb call
+          budget &amp; backoff; two GitHub Actions crons (frequent poll + 00:30 UTC report)
+          committing <code>dashboard.html</code>; synthetic worst-day fixture.</dd>
+        <dt>Demo</dt><dd class="demo">The worst-day fixture yields a <span class="sev c">CRITICAL</span>
+          event, a correction, and a stale banner; the scheduled workflow runs unattended and commits the report.</dd>
+        <dt>Proves</dt><dd class="proves">R3.2 · R3.3 · R6.2 · R6.3 · R8.2 · scheduling</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- DATA MODEL -->
+  <section>
+    <div class="sec-head"><span class="sec-num">03</span><h2>The data model</h2></div>
+    <p>A per-entity tracker in SQLite (the <em>persistent memory the feeds lack</em>), plus a raw
+      archive written before parsing. Severity is stored on the project's own house scale
+      —
+      <span class="sev n">NOTABLE</span>
+      <span class="sev s">SERIOUS</span>
+      <span class="sev c">CRITICAL</span>
+      — never a feed's native colour.</p>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Table</th><th>Represents</th><th>Key fields</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="fld">raw_payload</span></td>
+            <td>Every fetch, archived before parsing (schema-drift &amp; fixture source)</td>
+            <td><code>id · feed · fetched_at(UTC) · http_status · body</code></td>
+          </tr>
+          <tr>
+            <td><span class="fld">event</span></td>
+            <td>One tracked hazard Event per feed record (a lifecycle entity)</td>
+            <td><code>id · feed · feed_key · hazard_type · occurred_at(UTC) · lat · lon · depth · magnitude · feed_alert · house_severity · country · iso3 · glide · first_seen · last_seen_poll · lifecycle_status · raw_ref</code></td>
+          </tr>
+          <tr>
+            <td><span class="fld">episode</span></td>
+            <td>Updates to a fast-moving Event (cyclone track, flood re-issue)</td>
+            <td><code>id · event_id → · episode_key · updated_at(UTC) · alert_level</code></td>
+          </tr>
+          <tr>
+            <td><span class="fld">situation</span></td>
+            <td>Cross-feed aggregate — the unit the report tells as one story</td>
+            <td><code>id · glide · hazard_type · house_severity(max) · centroid_lat · centroid_lon · window_start</code></td>
+          </tr>
+          <tr>
+            <td><span class="fld">situation_member</span></td>
+            <td>Many-to-one link: several Events → one Situation</td>
+            <td><code>situation_id → · event_id → · role</code></td>
+          </tr>
+          <tr>
+            <td><span class="fld">report</span></td>
+            <td>Each published morning report</td>
+            <td><code>id · published_at(UTC) · window_start · window_end</code></td>
+          </tr>
+          <tr>
+            <td><span class="fld">news_item</span></td>
+            <td>What appeared in a report, and why</td>
+            <td><code>id · report_id → · situation_id → · news_type · house_severity · rank</code></td>
+          </tr>
+          <tr>
+            <td><span class="fld">feed_health</span></td>
+            <td>Per-feed freshness driving the stale-data banner</td>
+            <td><code>feed · last_success_at(UTC) · last_status</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="margin-top:1.2rem" class="rel">
+      Relationships &nbsp;·&nbsp; event <span style="color:var(--accent)">*→1</span> situation (via situation_member)
+      &nbsp;·&nbsp; situation <span style="color:var(--accent)">1→*</span> news_item across reports
+      &nbsp;·&nbsp; event <span style="color:var(--accent)">1→*</span> episode
+      &nbsp;·&nbsp; every event &amp; parse traces back to a <span class="fld">raw_payload</span>.
+    </p>
+    <p class="rel">
+      <code>news_type ∈ { new · escalation · revision · episode · correction }</code>
+      &nbsp;·&nbsp; <code>lifecycle_status ∈ { active · downgraded · deleted }</code>
+    </p>
+  </section>
+
+  <!-- OUT OF SCOPE -->
+  <section>
+    <div class="sec-head"><span class="sec-num">04</span><h2>Out of scope</h2></div>
+    <ul class="oos">
+      <li><strong>All-hazard coverage</strong> — conflict, epidemics, industrial accidents, heatwaves,
+        landslides. <small>The three feeds cannot deliver them.</small></li>
+      <li><strong>Real tsunami warnings</strong> — <code>tsunami:1</code> is only a NOAA-zone flag;
+        PTWC / tsunami.gov are separate sources. <small>Not integrated.</small></li>
+      <li><strong>Global coverage</strong> outside the Asia-Pacific bounding box.</li>
+      <li><strong>Sub-floor reporting</strong> — GDACS Green, PAGER green/none, tiny quakes.
+        <small>Sole exception: an in-region M≥6.5, depth≤70km quake with no PAGER yet.</small></li>
+      <li><strong>ReliefWeb casualty &amp; sitrep detail</strong> — blocked on the appname-gated
+        <code>reports</code> API. <small>MVP surfaces disaster declarations / GLIDE only.</small></li>
+      <li><strong>Historical backfill</strong> beyond what the agent's own store accumulates from first run.</li>
+    </ul>
+  </section>
+
+  <footer>
+    HADR Monitor PRD · derived from FRAME.md, CONTEXT.md, SHAPING.md (Shape C) and ADR-0001–0008 ·
+    detailed backing spec in docs/PRD.md
+  </footer>
+
+</div>
+</body>
+</html>
